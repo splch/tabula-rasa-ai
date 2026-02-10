@@ -1,0 +1,6 @@
+pybullet
+gymnasium
+stable-baselines3
+torch
+tensorboard
+moviepy==1.0.3
