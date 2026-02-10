@@ -1,4 +1,4 @@
-Below is a **single-file, runnable research baseline** that implements:
+This has a **single-file, runnable research baseline** that implements:
 
 * **3D rigid-body physics world** in **PyBullet** (fast to prototype; widely used for RL/robotics simulation) ([GitHub][1])
 * **Gymnasium-style environment** (`reset/step`) ([gymnasium.farama.org][2])
@@ -61,7 +61,7 @@ tensorboard --logdir runs
 
 ---
 
-## Why these components match your “tabula rasa discovery” goal
+## Why these components match a “tabula rasa discovery” goal
 
 * **No human task reward**: PPO learns purely from intrinsic novelty (RND) ([arXiv][3]) using SB3’s PPO implementation ([stable-baselines3.readthedocs.io][6])
 * **No pretrained perception or semantics**: all networks are random at initialization
@@ -73,8 +73,6 @@ tensorboard --logdir runs
   * increasing interaction metrics (contacts, object displacement)
 
 ---
-
-If you want, I can extend this exact codebase in the most research-useful direction next (without changing the core philosophy): **pixel observations + latent world model**, **object-centric dynamics**, or **vectorized envs + shared intrinsic module** for scale.
 
 [1]: https://raw.githubusercontent.com/bulletphysics/bullet3/master/docs/pybullet_quickstartguide.pdf "https://raw.githubusercontent.com/bulletphysics/bullet3/master/docs/pybullet_quickstartguide.pdf"
 [2]: https://gymnasium.farama.org/api/env/ "https://gymnasium.farama.org/api/env/"
