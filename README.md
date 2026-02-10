@@ -1,82 +1,94 @@
-This has a **single-file, runnable research baseline** that implements:
+# Tabula Rasa 3D Discovery
 
-* **3D rigid-body physics world** in **PyBullet** (fast to prototype; widely used for RL/robotics simulation) ([GitHub][1])
-* **Gymnasium-style environment** (`reset/step`) ([gymnasium.farama.org][2])
-* **Point agent** (a sphere) with continuous actions (forward force + yaw torque)
-* **No pretraining**: all networks start randomly initialized
-* **Intrinsic reward** via **Random Network Distillation (RND)** (novelty = predictor error vs fixed random target network) ([arXiv][3])
-* **World-model learning** in parallel (one-step predictor for diagnostics)
-* **Research logging** via **TensorBoard SummaryWriter** (scalars + text events + optional videos) ([PyTorch Documentation][4])
-* A simple **autocurriculum**: when novelty stays low for long enough, the environment increases complexity (more objects; ramp; second room)
+Minimal single-file research baseline for intrinsic-motivation RL in a 3D physics world.
 
-If you want an alternative curiosity mechanism later, you can swap RND for an Intrinsic Curiosity Module-style forward prediction error scheme ([arXiv][5]), but RND is extremely simple and robust to start with ([arXiv][3]).
+## What It Does
 
-## What this logs as “interesting insights”
+- Builds a custom **PyBullet** world with walls, dynamic objects, and curriculum structures.
+- Uses a **Gymnasium** environment with continuous actions: `forward_throttle`, `yaw_throttle`.
+- Trains an **SB3 PPO** policy from random initialization.
+- Replaces task reward with **RND intrinsic reward** (novelty).
+- Trains a separate **world model** online for diagnostics.
+- Logs learning signals and events to **TensorBoard**.
 
-Into TensorBoard, it logs:
+## Repository Layout
 
-* `intrinsic/rnd_reward`, `intrinsic/rnd_loss` (novelty and predictor learning)
-* `world_model/loss` (one-step dynamics prediction error; “physics understanding” proxy)
-* `interaction/contact_count`, `interaction/object_displacement` (how much the agent is *causing things to happen*)
-* `coverage/unique_cells` (state-space exploration coverage)
-* `events/first_contact` (first meaningful interaction)
-* `events/novelty_spike` (rare high-surprise transitions → often correspond to discovering new interactions/regimes)
-* `events/curriculum` (when environment complexity is bumped)
+- `tabula_rasa_3d.py`: environment, wrappers, callback, and training entrypoint.
+- `requirements.txt`: Python dependencies.
+- `runs/`: output directory for training runs.
 
-Optionally: `videos/rollout` (short deterministic rollouts) when `--video` is enabled.
-
----
-
-## How to run
-
-Install deps (minimal set):
+## Quick Start
 
 ```bash
-pip install pybullet gymnasium stable-baselines3 torch tensorboard
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-Train (headless):
+Run training (headless):
 
 ```bash
 python tabula_rasa_3d.py --total_steps 500000 --logdir runs/exp1
 ```
 
-Train with GUI:
+Run with PyBullet GUI:
 
 ```bash
 python tabula_rasa_3d.py --gui --total_steps 500000 --logdir runs/exp_gui
 ```
 
-Enable video logging (uses `rgb_array` render):
+Run with TensorBoard video logging enabled:
 
 ```bash
 python tabula_rasa_3d.py --video --total_steps 500000 --logdir runs/exp_video
 ```
 
-View logs:
+Open TensorBoard:
 
 ```bash
 tensorboard --logdir runs
 ```
 
----
+## Key CLI Flags
 
-## Why these components match a “tabula rasa discovery” goal
+- `--logdir`: output directory (default: `runs/tabula_rasa_bullet`)
+- `--seed`: random seed (default: `0`)
+- `--total_steps`: PPO timesteps (default: `500000`)
+- `--gui`: use PyBullet GUI mode
+- `--video`: log rollout videos to TensorBoard
 
-* **No human task reward**: PPO learns purely from intrinsic novelty (RND) ([arXiv][3]) using SB3’s PPO implementation ([stable-baselines3.readthedocs.io][6])
-* **No pretrained perception or semantics**: all networks are random at initialization
-* **“Discover rules” is operationalized** as:
+## What Gets Logged
 
-  * decreasing **world-model loss** over time (predictive physics competence)
-  * decreasing novelty in familiar regimes + novelty spikes when encountering new interactions
-  * increasing exploration **coverage**
-  * increasing interaction metrics (contacts, object displacement)
+Main scalar groups:
 
----
+- `intrinsic/*`: RND reward and loss
+- `world_model/*`: one-step prediction loss
+- `interaction/*`: contact count, object displacement, agent speed
+- `coverage/*`: unique visited grid cells
+- `episode/*`: return, length, mean intrinsic reward
+- `curriculum/*`: current curriculum level
 
-[1]: https://raw.githubusercontent.com/bulletphysics/bullet3/master/docs/pybullet_quickstartguide.pdf "https://raw.githubusercontent.com/bulletphysics/bullet3/master/docs/pybullet_quickstartguide.pdf"
-[2]: https://gymnasium.farama.org/api/env/ "https://gymnasium.farama.org/api/env/"
-[3]: https://arxiv.org/abs/1810.12894 "https://arxiv.org/abs/1810.12894"
-[4]: https://docs.pytorch.org/tutorials/recipes/recipes/tensorboard_with_pytorch.html "https://docs.pytorch.org/tutorials/recipes/recipes/tensorboard_with_pytorch.html"
-[5]: https://arxiv.org/abs/1705.05363 "https://arxiv.org/abs/1705.05363"
-[6]: https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html "https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html"
+Event text logs:
+
+- `events/first_contact`
+- `events/novelty_spike`
+- `events/curriculum`
+
+Optional video:
+
+- `videos/rollout` (when `--video` is enabled)
+
+## Saved Artifacts
+
+In each run directory (`--logdir`), training saves:
+
+- `ppo_policy.zip`
+- `rnd.pt`
+- `world_model.pt`
+- TensorBoard event files
+
+## Notes
+
+- There is **no extrinsic task reward** in this setup.
+- The world model is for diagnostics only; it is not used as reward.
+- Curriculum increases world complexity when recent intrinsic reward stays low.
