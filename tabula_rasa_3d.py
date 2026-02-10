@@ -220,35 +220,38 @@ class BulletWorldEnv(gym.Env):
         forward = float(np.clip(action[0], -1, 1))
         yaw = float(np.clip(action[1], -1, 1))
 
-        # Read agent yaw from orientation
-        pos, orn = p.getBasePositionAndOrientation(self._agent_id, physicsClientId=self._client_id)
-        yaw_angle = p.getEulerFromQuaternion(orn)[2]
-
-        # Apply force in heading direction (world frame)
         force_mag = forward * self.cfg.max_forward_force
-        fx = math.cos(yaw_angle) * force_mag
-        fy = math.sin(yaw_angle) * force_mag
-        p.applyExternalForce(
-            objectUniqueId=self._agent_id,
-            linkIndex=-1,
-            forceObj=[fx, fy, 0.0],
-            posObj=pos,
-            flags=p.WORLD_FRAME,
-            physicsClientId=self._client_id,
-        )
-
-        # Apply yaw torque
         torque_mag = yaw * self.cfg.max_yaw_torque
-        p.applyExternalTorque(
-            objectUniqueId=self._agent_id,
-            linkIndex=-1,
-            torqueObj=[0.0, 0.0, torque_mag],
-            flags=p.WORLD_FRAME,
-            physicsClientId=self._client_id,
-        )
 
-        # Step physics
+        # Step physics with persistent control across substeps.
+        # PyBullet clears external forces after each stepSimulation(),
+        # so we must re-apply them every substep.
         for _ in range(self.cfg.frame_skip):
+            # Read agent yaw from orientation
+            pos, orn = p.getBasePositionAndOrientation(self._agent_id, physicsClientId=self._client_id)
+            yaw_angle = p.getEulerFromQuaternion(orn)[2]
+
+            # Apply force in current heading direction (world frame)
+            fx = math.cos(yaw_angle) * force_mag
+            fy = math.sin(yaw_angle) * force_mag
+            p.applyExternalForce(
+                objectUniqueId=self._agent_id,
+                linkIndex=-1,
+                forceObj=[fx, fy, 0.0],
+                posObj=pos,
+                flags=p.WORLD_FRAME,
+                physicsClientId=self._client_id,
+            )
+
+            # Apply yaw torque (world frame)
+            p.applyExternalTorque(
+                objectUniqueId=self._agent_id,
+                linkIndex=-1,
+                torqueObj=[0.0, 0.0, torque_mag],
+                flags=p.WORLD_FRAME,
+                physicsClientId=self._client_id,
+            )
+
             p.stepSimulation(physicsClientId=self._client_id)
 
         obs = self._get_obs()
@@ -945,7 +948,7 @@ class ResearchCallback(BaseCallback):
             obs = env.reset()
             frames = []
             for _ in range(self.video_len_steps):
-                action, _ = self.model.predict(obs, deterministic=True)
+                action, _ = self.model.predict(obs, deterministic=False)
                 obs, _, dones, infos = env.step(action)
                 # render returns array per env if VecEnv; handle both
                 frame = None
@@ -1020,7 +1023,7 @@ def main():
         gamma=0.99,
         gae_lambda=0.95,
         clip_range=0.2,
-        ent_coef=0.0,
+        ent_coef=0.001,
         vf_coef=0.5,
         max_grad_norm=0.5,
         policy_kwargs=dict(net_arch=[256, 256]),
