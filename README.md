@@ -2,6 +2,8 @@
 
 Minimal single-file research baseline for intrinsic-motivation RL in a 3D physics world.
 
+<img width="256" height="256" alt="image" src="https://github.com/user-attachments/assets/d8838e1c-0b2c-4df2-aaf9-59134fb77110" />
+
 ## What It Does
 
 - Builds a custom **PyBullet** world with walls, dynamic objects, and curriculum structures.
